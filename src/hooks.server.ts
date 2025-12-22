@@ -1,10 +1,7 @@
+import { ANALYTICS_SALT } from '$env/static/private';
 import { insert_event } from '$lib/server/db';
 import type { Handle } from '@sveltejs/kit';
-import { sequence } from '@sveltejs/kit/hooks';
 import crypto from 'crypto';
-
-const SESSION_COOKIE = 'analytics_session';
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 function anonymize_ip(ip: string | null): string | null {
 	if (!ip) return null;
@@ -43,24 +40,20 @@ function get_client_ip(request: Request): string | null {
 	return null;
 }
 
-const session: Handle = async ({ event, resolve }) => {
-	let session_id = event.cookies.get(SESSION_COOKIE);
-	if (!session_id) {
-		session_id = crypto.randomUUID();
-		event.cookies.set(SESSION_COOKIE, session_id, {
-			path: '/',
-			httpOnly: true,
-			sameSite: 'lax',
-			maxAge: SESSION_MAX_AGE,
-		});
-	}
+function get_visitor_hash(
+	ip: string | null,
+	user_agent: string | null,
+): string {
+	const date = new Date().toISOString().split('T')[0];
+	const data = `${ip || ''}${user_agent || ''}${date}${ANALYTICS_SALT}`;
+	return crypto
+		.createHash('sha256')
+		.update(data)
+		.digest('hex')
+		.slice(0, 16);
+}
 
-	event.locals.sessionId = session_id;
-
-	return resolve(event);
-};
-
-const analytics: Handle = async ({ event, resolve }) => {
+export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const accept = event.request.headers.get('accept') || '';
 	const is_page_request = accept.includes('text/html');
@@ -69,16 +62,18 @@ const analytics: Handle = async ({ event, resolve }) => {
 	const is_asset = path.includes('.');
 
 	if (is_page_request && !is_internal_path && !is_asset) {
-		const ip = anonymize_ip(get_client_ip(event.request));
+		const ip = get_client_ip(event.request);
+		const user_agent = event.request.headers.get('user-agent');
+		const visitor_hash = get_visitor_hash(ip, user_agent);
 
 		insert_event.run(
-			event.locals.sessionId,
+			visitor_hash,
 			'page_view',
 			null,
 			path,
 			event.request.headers.get('referer') || null,
-			event.request.headers.get('user-agent') || null,
-			ip,
+			user_agent,
+			anonymize_ip(ip),
 			null,
 			Date.now(),
 		);
@@ -86,5 +81,3 @@ const analytics: Handle = async ({ event, resolve }) => {
 
 	return resolve(event);
 };
-
-export const handle = sequence(session, analytics);

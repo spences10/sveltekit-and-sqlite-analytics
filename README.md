@@ -1,44 +1,116 @@
-# sv
+# SvelteKit Analytics with SQLite
 
-Everything you need to build a Svelte project, powered by
-[`sv`](https://github.com/sveltejs/cli).
+Server-side analytics using SvelteKit hooks + SQLite. No cookies,
+GDPR-friendly.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step.
-Congrats!
+- Auto page view tracking via `hooks.server.ts`
+- Client event tracking via remote functions
+- SQLite with WAL mode
+- Anonymized IP addresses
+- Privacy-first: no cookies, daily rotating visitor hash (IP+UA+date)
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Setup
 
-# create a new project in my-app
-npx sv create my-app
+```bash
+pnpm install
+cp .env.example .env
 ```
 
-## Developing
+Generate a salt for visitor hashing:
 
-Once you've created a project and installed dependencies with
-`npm install` (or `pnpm install` or `yarn`), start a development
-server:
+```bash
+# Linux/macOS
+echo "ANALYTICS_SALT=$(openssl rand -hex 16)" > .env
 
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# Or manually set any random string
+echo "ANALYTICS_SALT=your-random-secret-here" > .env
 ```
 
-## Building
+Start dev server:
 
-To create a production version of your app:
-
-```sh
-npm run build
+```bash
+pnpm dev
 ```
 
-You can preview the production build with `npm run preview`.
+Database auto-creates at `data/analytics.db` on first request.
 
-> To deploy your app, you may need to install an
-> [adapter](https://svelte.dev/docs/kit/adapters) for your target
-> environment.
+## Usage
+
+### Page views
+
+Automatic. Any HTML page request is tracked.
+
+### Custom events
+
+```svelte
+<script>
+	import { track } from '$lib/analytics.remote';
+</script>
+
+<button
+	onclick={() =>
+		track({ name: 'signup_click', props: { plan: 'pro' } })}
+>
+	Sign Up
+</button>
+```
+
+## Schema
+
+```sql
+CREATE TABLE analytics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_hash TEXT NOT NULL,  -- daily rotating hash (IP+UA+date+salt)
+  event_type TEXT NOT NULL,    -- 'page_view' | 'custom'
+  event_name TEXT,             -- custom event name
+  path TEXT NOT NULL,
+  referrer TEXT,
+  user_agent TEXT,
+  ip TEXT,                     -- anonymized (last octet zeroed)
+  props TEXT,                  -- JSON
+  created_at INTEGER NOT NULL  -- unix ms
+);
+```
+
+## Files
+
+```
+src/
+├── hooks.server.ts           # auto page view tracking
+├── lib/
+│   ├── analytics.remote.ts   # track() command
+│   └── server/
+│       ├── db.ts             # database connection
+│       └── schema.sql        # table schema
+```
+
+## Query examples
+
+```sql
+-- page views by path
+SELECT path, COUNT(*) as views
+FROM analytics_events
+WHERE event_type = 'page_view'
+GROUP BY path
+ORDER BY views DESC;
+
+-- unique visitors per day
+SELECT DATE(created_at/1000, 'unixepoch') as day,
+       COUNT(DISTINCT visitor_hash) as visitors
+FROM analytics_events
+GROUP BY day;
+
+-- visitors on page right now (last 5 min)
+SELECT COUNT(DISTINCT visitor_hash) as active
+FROM analytics_events
+WHERE path = '/'
+AND created_at > (strftime('%s', 'now') * 1000 - 300000);
+
+-- custom events
+SELECT event_name, COUNT(*) as count
+FROM analytics_events
+WHERE event_type = 'custom'
+GROUP BY event_name;
+```
