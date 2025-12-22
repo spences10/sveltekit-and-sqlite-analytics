@@ -1,6 +1,6 @@
+import { insert_event } from '$lib/server/db';
 import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { insert_event } from '$lib/server/db';
 import crypto from 'crypto';
 
 const SESSION_COOKIE = 'analytics_session';
@@ -51,7 +51,7 @@ const session: Handle = async ({ event, resolve }) => {
 			path: '/',
 			httpOnly: true,
 			sameSite: 'lax',
-			maxAge: SESSION_MAX_AGE
+			maxAge: SESSION_MAX_AGE,
 		});
 	}
 
@@ -64,7 +64,8 @@ const analytics: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const accept = event.request.headers.get('accept') || '';
 	const is_page_request = accept.includes('text/html');
-	const is_internal_path = path.startsWith('/_') || path.startsWith('/__');
+	const is_internal_path =
+		path.startsWith('/_') || path.startsWith('/__');
 	const is_asset = path.includes('.');
 
 	if (is_page_request && !is_internal_path && !is_asset) {
@@ -79,7 +80,7 @@ const analytics: Handle = async ({ event, resolve }) => {
 			event.request.headers.get('user-agent') || null,
 			ip,
 			null,
-			Date.now()
+			Date.now(),
 		);
 	}
 

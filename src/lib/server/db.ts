@@ -1,9 +1,10 @@
 import Database from 'better-sqlite3';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const DATA_DIR = join(process.cwd(), 'data');
-const DB_PATH = process.env.DATABASE_PATH || join(DATA_DIR, 'analytics.db');
+const DB_PATH =
+	process.env.DATABASE_PATH || join(DATA_DIR, 'analytics.db');
 
 // Ensure data directory exists
 if (!existsSync(DATA_DIR)) {

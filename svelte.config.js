@@ -9,9 +9,9 @@ const config = {
 
 	kit: {
 		adapter: adapter(),
-		experimental: { remoteFunctions: true }
+		experimental: { remoteFunctions: true },
 	},
-	compilerOptions: { experimental: { async: true } }
+	compilerOptions: { experimental: { async: true } },
 };
 
 export default config;
