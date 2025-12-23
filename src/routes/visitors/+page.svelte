@@ -4,6 +4,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import ViewingNow from '$lib/components/viewing-now.svelte';
+	import VisitorTimelineChart from '$lib/components/visitor-timeline-chart.svelte';
 	import { analytics } from '$lib/state/analytics.svelte';
 
 	$effect(() => {
@@ -29,12 +30,25 @@
 	<Card.Root class="mt-6">
 		<Card.Header>
 			<Card.Title>Visitor Timeline</Card.Title>
-			<Card.Description>Visitors over time</Card.Description>
+			<Card.Description>
+				Visitors and page views over time
+			</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if analytics.loading && analytics.timeline.length === 0}
 				<p class="text-muted-foreground">Loading...</p>
-			{:else if analytics.timeline.length === 0}
+			{:else}
+				<VisitorTimelineChart data={analytics.timeline} />
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-6">
+		<Card.Header>
+			<Card.Title>Details</Card.Title>
+		</Card.Header>
+		<Card.Content>
+			{#if analytics.timeline.length === 0}
 				<p class="text-muted-foreground">No data yet</p>
 			{:else}
 				<Table.Root>
