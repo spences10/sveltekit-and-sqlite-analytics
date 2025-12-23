@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { track } from '$lib/analytics.remote';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import type { TimeRange } from '$lib/state/analytics.svelte';
 
@@ -10,6 +11,7 @@
 	let { value, onchange }: Props = $props();
 
 	function handle_change(new_value: string) {
+		track({ name: 'time_range_change', props: { range: new_value } });
 		onchange(new_value as TimeRange);
 	}
 </script>
