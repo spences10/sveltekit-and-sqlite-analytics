@@ -1,10 +1,21 @@
 <script lang="ts">
 	import DashboardNav from '$lib/components/dashboard-nav.svelte';
+	import HorizontalBarChart from '$lib/components/horizontal-bar-chart.svelte';
 	import TimeRangeSelector from '$lib/components/time-range-selector.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import ViewingNow from '$lib/components/viewing-now.svelte';
 	import { analytics } from '$lib/state/analytics.svelte';
+
+	let chart_data = $derived(
+		analytics.referrers.slice(0, 8).map((r) => ({
+			label:
+				r.source.length > 30
+					? r.source.slice(0, 30) + '...'
+					: r.source,
+			value: r.visits,
+		})),
+	);
 
 	$effect(() => {
 		analytics.fetch_all();
@@ -32,6 +43,16 @@
 			<Card.Description
 				>Where your visitors come from</Card.Description
 			>
+		</Card.Header>
+		<Card.Content>
+			<HorizontalBarChart data={chart_data} color="var(--chart-2)" />
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-6">
+		<Card.Header>
+			<Card.Title>All Referrers</Card.Title>
+			<Card.Description>Complete breakdown</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if analytics.loading && analytics.referrers.length === 0}

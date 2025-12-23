@@ -1,11 +1,31 @@
 <script lang="ts">
 	import DashboardNav from '$lib/components/dashboard-nav.svelte';
+	import HorizontalBarChart from '$lib/components/horizontal-bar-chart.svelte';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import TimeRangeSelector from '$lib/components/time-range-selector.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import ViewingNow from '$lib/components/viewing-now.svelte';
+	import VisitorTimelineChart from '$lib/components/visitor-timeline-chart.svelte';
 	import { analytics } from '$lib/state/analytics.svelte';
+
+	let pages_chart_data = $derived(
+		analytics.top_pages.slice(0, 5).map((p) => ({
+			label:
+				p.path.length > 20 ? p.path.slice(0, 20) + '...' : p.path,
+			value: p.views,
+		})),
+	);
+
+	let referrers_chart_data = $derived(
+		analytics.referrers.slice(0, 5).map((r) => ({
+			label:
+				r.source.length > 20
+					? r.source.slice(0, 20) + '...'
+					: r.source,
+			value: r.visits,
+		})),
+	);
 
 	$effect(() => {
 		analytics.fetch_all();
@@ -57,40 +77,28 @@
 			/>
 		</div>
 
-		<div class="mt-8 grid gap-6 lg:grid-cols-2">
+		<Card.Root class="mt-6">
+			<Card.Header>
+				<Card.Title>Traffic Overview</Card.Title>
+				<Card.Description
+					>Visitors and page views over time</Card.Description
+				>
+			</Card.Header>
+			<Card.Content>
+				<VisitorTimelineChart data={analytics.timeline} />
+			</Card.Content>
+		</Card.Root>
+
+		<div class="mt-6 grid gap-6 lg:grid-cols-2">
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Top Pages</Card.Title>
 				</Card.Header>
 				<Card.Content>
-					{#if analytics.top_pages.length === 0}
-						<p class="text-muted-foreground">No data yet</p>
-					{:else}
-						<Table.Root>
-							<Table.Header>
-								<Table.Row>
-									<Table.Head>Path</Table.Head>
-									<Table.Head class="text-right">Views</Table.Head>
-									<Table.Head class="text-right">Visitors</Table.Head>
-								</Table.Row>
-							</Table.Header>
-							<Table.Body>
-								{#each analytics.top_pages as page}
-									<Table.Row>
-										<Table.Cell class="font-medium"
-											>{page.path}</Table.Cell
-										>
-										<Table.Cell class="text-right"
-											>{page.views}</Table.Cell
-										>
-										<Table.Cell class="text-right"
-											>{page.unique_visitors}</Table.Cell
-										>
-									</Table.Row>
-								{/each}
-							</Table.Body>
-						</Table.Root>
-					{/if}
+					<HorizontalBarChart
+						data={pages_chart_data}
+						color="var(--chart-1)"
+					/>
 				</Card.Content>
 			</Card.Root>
 
@@ -99,30 +107,10 @@
 					<Card.Title>Top Referrers</Card.Title>
 				</Card.Header>
 				<Card.Content>
-					{#if analytics.referrers.length === 0}
-						<p class="text-muted-foreground">No data yet</p>
-					{:else}
-						<Table.Root>
-							<Table.Header>
-								<Table.Row>
-									<Table.Head>Source</Table.Head>
-									<Table.Head class="text-right">Visits</Table.Head>
-								</Table.Row>
-							</Table.Header>
-							<Table.Body>
-								{#each analytics.referrers as ref}
-									<Table.Row>
-										<Table.Cell class="font-medium"
-											>{ref.source}</Table.Cell
-										>
-										<Table.Cell class="text-right"
-											>{ref.visits}</Table.Cell
-										>
-									</Table.Row>
-								{/each}
-							</Table.Body>
-						</Table.Root>
-					{/if}
+					<HorizontalBarChart
+						data={referrers_chart_data}
+						color="var(--chart-2)"
+					/>
 				</Card.Content>
 			</Card.Root>
 		</div>

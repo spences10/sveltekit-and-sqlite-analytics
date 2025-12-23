@@ -1,10 +1,19 @@
 <script lang="ts">
 	import DashboardNav from '$lib/components/dashboard-nav.svelte';
+	import HorizontalBarChart from '$lib/components/horizontal-bar-chart.svelte';
 	import TimeRangeSelector from '$lib/components/time-range-selector.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import ViewingNow from '$lib/components/viewing-now.svelte';
 	import { analytics } from '$lib/state/analytics.svelte';
+
+	let chart_data = $derived(
+		analytics.top_pages.slice(0, 8).map((p) => ({
+			label:
+				p.path.length > 25 ? p.path.slice(0, 25) + '...' : p.path,
+			value: p.views,
+		})),
+	);
 
 	$effect(() => {
 		analytics.fetch_all();
@@ -29,7 +38,17 @@
 	<Card.Root class="mt-6">
 		<Card.Header>
 			<Card.Title>Page Views</Card.Title>
-			<Card.Description>All pages ranked by views</Card.Description>
+			<Card.Description>Top pages by views</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<HorizontalBarChart data={chart_data} color="var(--chart-1)" />
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-6">
+		<Card.Header>
+			<Card.Title>All Pages</Card.Title>
+			<Card.Description>Complete breakdown</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if analytics.loading && analytics.top_pages.length === 0}

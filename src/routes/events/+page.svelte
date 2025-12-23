@@ -1,10 +1,21 @@
 <script lang="ts">
 	import DashboardNav from '$lib/components/dashboard-nav.svelte';
+	import HorizontalBarChart from '$lib/components/horizontal-bar-chart.svelte';
 	import TimeRangeSelector from '$lib/components/time-range-selector.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import ViewingNow from '$lib/components/viewing-now.svelte';
 	import { analytics } from '$lib/state/analytics.svelte';
+
+	let chart_data = $derived(
+		analytics.custom_events.slice(0, 8).map((e) => ({
+			label:
+				e.event_name.length > 25
+					? e.event_name.slice(0, 25) + '...'
+					: e.event_name,
+			value: e.count,
+		})),
+	);
 
 	$effect(() => {
 		analytics.fetch_all();
@@ -32,6 +43,25 @@
 			<Card.Description
 				>Custom events tracked on your site</Card.Description
 			>
+		</Card.Header>
+		<Card.Content>
+			{#if analytics.custom_events.length === 0}
+				<p class="text-muted-foreground">
+					No custom events tracked yet
+				</p>
+			{:else}
+				<HorizontalBarChart
+					data={chart_data}
+					color="var(--chart-3)"
+				/>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-6">
+		<Card.Header>
+			<Card.Title>All Events</Card.Title>
+			<Card.Description>Complete breakdown</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if analytics.loading && analytics.custom_events.length === 0}
