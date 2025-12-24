@@ -18,7 +18,14 @@ db.pragma('journal_mode = WAL');
 // Initialize schema
 db.exec(schema);
 
-export const insert_event = db.prepare(`
-	INSERT INTO analytics_events (visitor_hash, event_type, event_name, path, referrer, user_agent, ip, props, created_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
+/**
+ * Get insert statement - creates fresh each time
+ * LEARNING: In dev mode, HMR can cause database reconnects that invalidate
+ * cached prepared statements. Creating fresh statements avoids stale connection issues.
+ */
+export const get_insert_statement = () => {
+	return db.prepare(`
+		INSERT INTO analytics_events (visitor_hash, event_type, event_name, path, referrer, user_agent, ip, country, browser, device_type, os, is_bot, props, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`);
+};

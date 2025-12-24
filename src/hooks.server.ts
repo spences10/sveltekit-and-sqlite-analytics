@@ -1,57 +1,11 @@
-import { ANALYTICS_SALT } from '$env/static/private';
-import { insert_event } from '$lib/server/db';
+import {
+	anonymise_ip,
+	get_client_ip,
+	get_visitor_hash,
+	parse_user_agent,
+} from '$lib/analytics.remote';
+import { get_insert_statement } from '$lib/server/db';
 import type { Handle } from '@sveltejs/kit';
-import crypto from 'crypto';
-
-function anonymize_ip(ip: string | null): string | null {
-	if (!ip) return null;
-
-	// Handle IPv6
-	if (ip.includes(':')) {
-		const parts = ip.split(':');
-		if (parts.length >= 4) {
-			parts[parts.length - 1] = '0';
-			parts[parts.length - 2] = '0';
-		}
-		return parts.join(':');
-	}
-
-	// Handle IPv4
-	const parts = ip.split('.');
-	if (parts.length === 4) {
-		parts[3] = '0';
-		return parts.join('.');
-	}
-
-	return ip;
-}
-
-function get_client_ip(request: Request): string | null {
-	const forwarded_for = request.headers.get('x-forwarded-for');
-	if (forwarded_for) {
-		return forwarded_for.split(',')[0].trim();
-	}
-
-	const real_ip = request.headers.get('x-real-ip');
-	if (real_ip) {
-		return real_ip;
-	}
-
-	return null;
-}
-
-function get_visitor_hash(
-	ip: string | null,
-	user_agent: string | null,
-): string {
-	const date = new Date().toISOString().split('T')[0];
-	const data = `${ip || ''}${user_agent || ''}${date}${ANALYTICS_SALT}`;
-	return crypto
-		.createHash('sha256')
-		.update(data)
-		.digest('hex')
-		.slice(0, 16);
-}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
@@ -65,15 +19,29 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const ip = get_client_ip(event.request);
 		const user_agent = event.request.headers.get('user-agent');
 		const visitor_hash = get_visitor_hash(ip, user_agent);
+		const { browser, os, device_type, is_bot } =
+			parse_user_agent(user_agent);
 
-		insert_event.run(
+		/**
+		 * LEARNING: Country detection via Cloudflare header.
+		 * If using Cloudflare, cf-ipcountry header provides ISO country code.
+		 * Other providers may use different headers (e.g., x-vercel-ip-country).
+		 */
+		const country = event.request.headers.get('cf-ipcountry');
+
+		get_insert_statement().run(
 			visitor_hash,
 			'page_view',
 			null,
 			path,
 			event.request.headers.get('referer') || null,
 			user_agent,
-			anonymize_ip(ip),
+			anonymise_ip(ip),
+			country,
+			browser,
+			device_type,
+			os,
+			is_bot ? 1 : 0,
 			null,
 			Date.now(),
 		);
