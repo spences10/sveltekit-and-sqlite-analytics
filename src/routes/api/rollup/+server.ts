@@ -1,4 +1,4 @@
-import { ROLLUP_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import rollup_schema from '$lib/server/rollup-schema.sql?raw';
 import { json } from '@sveltejs/kit';
@@ -23,8 +23,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 
-		// Simple token auth
-		if (body.token !== ROLLUP_TOKEN) {
+		// Simple token auth (skip in dev if no token configured)
+		if (env.ROLLUP_TOKEN && body.token !== env.ROLLUP_TOKEN) {
 			return json({ error: 'Unauthorised' }, { status: 401 });
 		}
 

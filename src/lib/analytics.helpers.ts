@@ -3,6 +3,8 @@
  * Separated from remote functions for better testability
  */
 
+import type Database from 'better-sqlite3';
+
 // ============================================
 // Flag Emoji Utilities
 // ============================================
@@ -62,16 +64,7 @@ export interface ActiveOnPathResult {
 	countries: CountryCount[];
 }
 
-/**
- * Generic database interface for testability
- * Allows mocking in tests without real database
- */
-export interface DatabaseClient {
-	prepare: (sql: string) => {
-		get: (...args: unknown[]) => unknown;
-		all: (...args: unknown[]) => unknown[];
-	};
-}
+export type DatabaseClient = Database.Database;
 
 // ============================================
 // Query Functions
